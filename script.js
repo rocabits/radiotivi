@@ -1056,13 +1056,11 @@ function updateFilterStates() {
 // ========== GOOGLE CAST ==========
 var castInitAttempts = 0;
 
-window['__onGCastApiAvailable'] = function(isAvailable) {
-  castAvailable = !!isAvailable;
-  castReadySafe();
-};
-
 function castReadySafe() {
   try {
+    if (window.__CAST_AVAIL_RAW__ !== undefined) {
+      castAvailable = !!window.__CAST_AVAIL_RAW__;
+    }
     if (!castAvailable && typeof cast !== 'undefined' && cast.framework && cast.framework.CastContext) {
       castAvailable = true;
     }

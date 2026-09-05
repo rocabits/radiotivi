@@ -246,7 +246,13 @@
   <script src="config.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/hls.js@1/dist/hls.min.js"></script>
-  <script src="https://www.gstatic.com/cv2/sender/cast_sender.js?loadCastFramework=1"></script>
+  <script>
+  window['__onGCastApiAvailable'] = function(isAvailable) {
+    window.__CAST_AVAIL_RAW__ = isAvailable;
+    if (typeof castReadySafe === 'function') { castReadySafe(); }
+  };
+</script>
+  <script src="https://www.gstatic.com/cv/js/sender/v1/cast_sender.js?loadCastFramework=1"></script>
   <script src="script.js"></script>
 </body>
 </html>
