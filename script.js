@@ -1055,6 +1055,7 @@ function updateFilterStates() {
 
 // ========== GOOGLE CAST ==========
 var castInitAttempts = 0;
+var castConnecting = false;
 
 function castReadySafe() {
   try {
@@ -1090,6 +1091,7 @@ function initializeCastApi() {
   sm.addEventListener(cast.framework.SessionManagerEventType.SESSION_STARTED, function() {
     castSession = sm.getCurrentSession();
     castPlaybackStarted = false;
+    castConnecting = false;
     updateCastButton();
     updateCastStatus();
     if (currentTvChannel) {
@@ -1099,9 +1101,19 @@ function initializeCastApi() {
   sm.addEventListener(cast.framework.SessionManagerEventType.SESSION_ENDED, function() {
     castSession = null;
     castPlaybackStarted = false;
+    castConnecting = false;
     updateCastButton();
     updateCastStatus();
     resumeLocalPlayback();
+  });
+  sm.addEventListener(cast.framework.SessionManagerEventType.SESSION_START_FAILED, function(ev) {
+    var code = ev && ev.error ? ev.error.code : '';
+    console.error('[Cast] SESSION_START_FAILED', code, ev && ev.error);
+    castConnecting = false;
+    updateCastButton();
+    updateCastStatus();
+    var st = document.getElementById('videoStatus');
+    if (st) st.textContent = 'Error al conectar: ' + castFriendlyError(code);
   });
   updateCastButton();
   updateCastStatus();
@@ -1123,22 +1135,39 @@ function updateCastStatus() {
   }
 }
 
+function castFriendlyError(code) {
+  if (code === 'timeout' || code === 6) return 'tiempo de espera agotado';
+  if (code === 'cancel' || code === 5) return 'cancelado';
+  if (code === 'receiver_unavailable' || code === 3) return 'receptor no disponible';
+  if (code === 'session_error' || code === 8) return 'error de sesion';
+  return 'error ' + (code || 'desconocido');
+}
+
 function startCastPlayback(c) {
   if (!c || !castSession) return;
   var statusEl = document.getElementById('videoStatus');
   try {
-    var mediaInfo = new chrome.cast.media.MediaInfo(c.url, 'application/x-mpegURL');
+    var url = c.url;
+    var contentType = 'application/x-mpegURL';
+    if (/\.mpd(?:\?|$)/i.test(url)) contentType = 'application/dash+xml';
+    else if (/\.(mp4|m4v)(?:\?|$)/i.test(url)) contentType = 'video/mp4';
+    else if (/\.(mp3|aac)(?:\?|$)/i.test(url)) contentType = 'audio/mpeg';
+    var mediaInfo = new chrome.cast.media.MediaInfo(url, contentType);
     var meta = new chrome.cast.media.MediaMetadata(chrome.cast.media.MetadataType.TV_SHOW);
     meta.title = c.nombre;
     mediaInfo.metadata = meta;
     var request = new chrome.cast.media.LoadRequest(mediaInfo);
+    if (statusEl) statusEl.textContent = 'Enviando a la TV...';
+    console.log('[Cast] loadMedia', url, contentType);
     castSession.loadMedia(request).then(function() {
       castPlaybackStarted = true;
       if (statusEl) statusEl.textContent = 'Reproduciendo en la TV';
-    }).catch(function() {
-      if (statusEl) statusEl.textContent = 'No se pudo enviar a la TV';
+    }).catch(function(err) {
+      console.error('[Cast] loadMedia error', err);
+      if (statusEl) statusEl.textContent = 'No se pudo enviar a la TV: ' + castFriendlyError(err && err.code);
     });
   } catch (e) {
+    console.error('[Cast] loadMedia throw', e);
     if (statusEl) statusEl.textContent = 'No se pudo enviar a la TV';
   }
 }
@@ -1154,10 +1183,20 @@ function toggleCast() {
   } else if (!castAvailable) {
     var stx = document.getElementById('videoStatus');
     if (stx) stx.textContent = 'Tu navegador no soporta Chromecast';
+  } else if (castConnecting) {
+    return;
   } else {
-    castContext.requestSession().catch(function() {
-      var st = document.getElementById('videoStatus');
-      if (st) st.textContent = 'No se pudo conectar con el dispositivo';
+    castConnecting = true;
+    var stc = document.getElementById('videoStatus');
+    if (stc) stc.textContent = 'Buscando dispositivo...';
+    castContext.requestSession().then(function() {
+      castConnecting = false;
+      if (typeof console !== 'undefined') console.log('[Cast] requestSession ok');
+    }).catch(function(err) {
+      castConnecting = false;
+      console.error('[Cast] requestSession error', err);
+      var ste = document.getElementById('videoStatus');
+      if (ste) ste.textContent = 'No se pudo conectar: ' + castFriendlyError(err && err.code);
     });
   }
 }
