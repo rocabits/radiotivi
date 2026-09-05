@@ -1054,6 +1054,8 @@ function updateFilterStates() {
 }
 
 // ========== GOOGLE CAST ==========
+var castInitAttempts = 0;
+
 window['__onGCastApiAvailable'] = function(isAvailable) {
   castAvailable = !!isAvailable;
   castReadySafe();
@@ -1068,9 +1070,15 @@ function castReadySafe() {
       initializeCastApi();
     }
     updateCastButton();
+    updateCastStatus();
   } catch (e) {
-    castAvailable = false;
-    updateCastButton();
+    if (castInitAttempts < 5) {
+      castInitAttempts = castInitAttempts + 1;
+      setTimeout(castReadySafe, 1000);
+    } else {
+      castAvailable = false;
+      updateCastStatus();
+    }
   }
 }
 
@@ -1085,6 +1093,7 @@ function initializeCastApi() {
     castSession = sm.getCurrentSession();
     castPlaybackStarted = false;
     updateCastButton();
+    updateCastStatus();
     if (currentTvChannel) {
       startCastPlayback(currentTvChannel);
     }
@@ -1092,14 +1101,28 @@ function initializeCastApi() {
   sm.addEventListener(cast.framework.SessionManagerEventType.SESSION_ENDED, function() {
     castSession = null;
     castPlaybackStarted = false;
-    var btn = document.getElementById('castBtn');
-    if (btn) btn.classList.remove('active');
+    updateCastButton();
+    updateCastStatus();
     resumeLocalPlayback();
   });
+  updateCastButton();
+  updateCastStatus();
 }
 
 function isCasting() {
   return !!(castContext && castSession);
+}
+
+function updateCastStatus() {
+  var el = document.getElementById('castStatus');
+  if (!el) return;
+  if (castAvailable) {
+    el.textContent = 'Google Cast: disponible';
+    el.classList.remove('no');
+  } else {
+    el.textContent = 'Google Cast: no disponible en este navegador';
+    el.classList.add('no');
+  }
 }
 
 function startCastPlayback(c) {
@@ -1130,6 +1153,9 @@ function toggleCast() {
   }
   if (castSession) {
     castContext.endCurrentSession(true);
+  } else if (!castAvailable) {
+    var stx = document.getElementById('videoStatus');
+    if (stx) stx.textContent = 'Tu navegador no soporta Chromecast';
   } else {
     castContext.requestSession().catch(function() {
       var st = document.getElementById('videoStatus');
@@ -1141,10 +1167,6 @@ function toggleCast() {
 function updateCastButton() {
   var btn = document.getElementById('castBtn');
   if (!btn) return;
-  if (!castAvailable) {
-    btn.hidden = true;
-    return;
-  }
   btn.hidden = false;
   btn.classList.toggle('active', !!castSession);
 }
@@ -1171,6 +1193,8 @@ function openVideoModal(c) {
   statusEl.textContent = 'Cargando...';
   document.getElementById('videoModal').classList.add('open');
   document.body.style.overflow = 'hidden';
+  updateCastButton();
+  updateCastStatus();
 
   if (castSession) {
     statusEl.textContent = 'Enviando a TV...';

@@ -864,6 +864,17 @@ header {
   min-height: 20px;
 }
 
+.cast-status {
+  font-size: 12px;
+  opacity: 0.75;
+  min-height: 16px;
+}
+
+.cast-status.no {
+  color: #e67e22;
+  opacity: 1;
+}
+
 /* ========== CONFIRM MODAL ========== */
 .modal-confirm .modal-panel {
   max-width: 320px;
