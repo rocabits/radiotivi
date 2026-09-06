@@ -1113,6 +1113,7 @@ function initializeCastApi() {
       }
     } catch (e) {}
     if (currentTvChannel) {
+      stopLocalPlayback();
       startCastPlayback(currentTvChannel);
     }
   });
@@ -1327,6 +1328,19 @@ function updateCastButton() {
   btn.hidden = false;
   btn.classList.toggle('active', !!castSession);
   btn.classList.toggle('connecting', !!castConnecting || !!castLoadTimer);
+}
+
+function stopLocalPlayback() {
+  var video = document.getElementById('videoPlayer');
+  if (video) { video.pause(); video.src = ''; video.removeAttribute('src'); try { video.load(); } catch(e) {} }
+  if (currentHls) { currentHls.destroy(); currentHls = null; }
+  var modal = document.getElementById('videoModal');
+  if (modal && modal.classList.contains('open')) {
+    modal.classList.remove('open');
+    document.body.style.overflow = '';
+  }
+  var videoStatus = document.getElementById('videoStatus');
+  if (videoStatus) videoStatus.textContent = '';
 }
 
 function resumeLocalPlayback() {
@@ -1691,6 +1705,7 @@ function bindEvents() {
       var ch2 = findChannel(id2);
       if (ch2) {
         if (castSession) {
+          stopLocalPlayback();
           currentTvChannel = ch2;
           stopAudio();
           castDiag('tarjeta pulsada con sesion activa, enviando ' + ch2.nombre);
