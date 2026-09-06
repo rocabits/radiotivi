@@ -37,7 +37,8 @@ var castSession = null;
 var castPlaybackStarted = false;
 var castStoppedByUser = false;
 var castRequestPending = false;
-var castConnectStallReload = false;
+var castPendingReq = null;
+var castRetryQueued = false;
 var currentTvChannel = null;
 // Radio country state
 var radioCountries = [];
@@ -1308,22 +1309,15 @@ function toggleCast() {
     showToast('La conexión anterior sigue en curso. Espera o recarga la página.');
     return;
   }
-  if (castConnectStallReload) {
-    castConnectStallReload = false;
-    try { castContext.endCurrentSession(true); } catch (e) {}
-    showToast('La TV no respondió. Reiniciando la conexión...');
-    setTimeout(function() {
-      if (castSession) return;
-      location.reload();
-    }, 1200);
-    return;
-  }
   connectToTv();
+}
+
+function castIsInvalidParam(err) {
+  return !!(err && (err.code === 'invalid_parameter' || (err.description || '').indexOf('invalid parameter') !== -1));
 }
 
 function connectToTv() {
   castStoppedByUser = false;
-  castConnectStallReload = false;
   castConnecting = true;
   castRequestPending = true;
   updateCastButton();
@@ -1333,9 +1327,8 @@ function connectToTv() {
     if (castRequestPending) {
       castConnecting = false;
       castRequestPending = false;
-      castConnectStallReload = true;
       updateCastButton();
-      showToast('Sin respuesta del Google TV. Pulsa de nuevo para reiniciar la conexión.');
+      showToast('Sin respuesta del Google TV. Pulsa de nuevo para reintentar.');
     }
   }, 30000);
   var req;
@@ -1347,33 +1340,37 @@ function connectToTv() {
     if (castConnectTimer) { clearTimeout(castConnectTimer); castConnectTimer = null; }
     updateCastButton();
     console.error('[Cast] requestSession lanzó excepción (intento previo aún en curso)', e);
-    setTimeout(function() {
-      if (castSession) return;
-      showToast('La TV no respondió. Recargando para reiniciar la conexión...');
-      setTimeout(function() { location.reload(); }, 1200);
-    }, 300);
+    if (castRetryQueued) {
+      showToast('El intento anterior sigue sin responder. Cierra la app y ábrela de nuevo.');
+    } else {
+      castRetryQueued = true;
+      showToast('Esperando al intento anterior para reconectar...');
+    }
     return;
   }
+  castPendingReq = req;
   req.then(function() {
+    castPendingReq = null;
     castRequestPending = false;
     castConnecting = false;
+    castRetryQueued = false;
     if (castConnectTimer) { clearTimeout(castConnectTimer); castConnectTimer = null; }
     updateCastButton();
     console.log('[Cast] requestSession completado (estado real por SESSION_STARTED)');
   }).catch(function(err) {
+    castPendingReq = null;
     castRequestPending = false;
     castConnecting = false;
     if (castConnectTimer) { clearTimeout(castConnectTimer); castConnectTimer = null; }
     castSession = null;
     updateCastButton();
     console.error('[Cast] requestSession error', err, castErrInfo(err));
-    var wedge = (err && (err.code === 'invalid_parameter' || (err.description || '').indexOf('invalid parameter') !== -1));
-    if (wedge) {
-      showToast('La conexión anterior sigue bloqueada. Reiniciando para poder conectar...');
-      setTimeout(function() {
-        if (castSession) return;
-        location.reload();
-      }, 1200);
+    if (castIsInvalidParam(err)) {
+      castRetryQueued = true;
+      showToast('Esperando al intento anterior para reconectar...');
+    } else if (castRetryQueued) {
+      castRetryQueued = false;
+      setTimeout(connectToTv, 300);
     } else {
       showToast('No se pudo conectar: ' + castErrInfo(err) + '. ' + castHint(err && err.code));
     }
