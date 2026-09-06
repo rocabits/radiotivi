@@ -37,6 +37,7 @@ var castSession = null;
 var castPlaybackStarted = false;
 var castStoppedByUser = false;
 var castRequestPending = false;
+var castConnectStallReload = false;
 var currentTvChannel = null;
 // Radio country state
 var radioCountries = [];
@@ -1307,11 +1308,22 @@ function toggleCast() {
     showToast('La conexión anterior sigue en curso. Espera o recarga la página.');
     return;
   }
+  if (castConnectStallReload) {
+    castConnectStallReload = false;
+    try { castContext.endCurrentSession(true); } catch (e) {}
+    showToast('La TV no respondió. Reiniciando la conexión...');
+    setTimeout(function() {
+      if (castSession) return;
+      location.reload();
+    }, 1200);
+    return;
+  }
   connectToTv();
 }
 
 function connectToTv() {
   castStoppedByUser = false;
+  castConnectStallReload = false;
   castConnecting = true;
   castRequestPending = true;
   updateCastButton();
@@ -1321,8 +1333,9 @@ function connectToTv() {
     if (castRequestPending) {
       castConnecting = false;
       castRequestPending = false;
+      castConnectStallReload = true;
       updateCastButton();
-      showToast('Sin respuesta del Google TV. Pulsa de nuevo para reintentar.');
+      showToast('Sin respuesta del Google TV. Pulsa de nuevo para reiniciar la conexión.');
     }
   }, 30000);
   var req;
@@ -1354,7 +1367,16 @@ function connectToTv() {
     castSession = null;
     updateCastButton();
     console.error('[Cast] requestSession error', err, castErrInfo(err));
-    showToast('No se pudo conectar: ' + castErrInfo(err) + '. ' + castHint(err && err.code));
+    var wedge = (err && (err.code === 'invalid_parameter' || (err.description || '').indexOf('invalid parameter') !== -1));
+    if (wedge) {
+      showToast('La conexión anterior sigue bloqueada. Reiniciando para poder conectar...');
+      setTimeout(function() {
+        if (castSession) return;
+        location.reload();
+      }, 1200);
+    } else {
+      showToast('No se pudo conectar: ' + castErrInfo(err) + '. ' + castHint(err && err.code));
+    }
   });
 }
 
