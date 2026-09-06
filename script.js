@@ -1315,15 +1315,47 @@ function castIsInvalidParam(err) {
   return !!(err && (err.code === 'invalid_parameter' || (err.description || '').indexOf('invalid parameter') !== -1));
 }
 
-function castResetAndReload(reason) {
-  if (castReloadScheduled) return;
-  castReloadScheduled = true;
+function castCastState() {
+  try {
+    if (castContext) return castContext.getCastState() || 'NOT_CONNECTED';
+  } catch (e) {}
+  return 'NOT_CONNECTED';
+}
+
+function castCheckAndRecover() {
+  if (castSession) { castReloadScheduled = false; return; }
+  if (!castRequestPending) { castReloadScheduled = false; return; }
+  if (castCastState() === 'CONNECTED') {
+    castConnecting = false;
+    castRequestPending = false;
+    if (castConnectTimer) { clearTimeout(castConnectTimer); castConnectTimer = null; }
+    updateCastButton();
+    castReloadScheduled = false;
+    return;
+  }
+  console.log('[Cast] 30s sin respuesta, dando margen antes de recargar');
+  if (!castReloadScheduled) {
+    castReloadScheduled = true;
+    showToast('La conexión aún no responde. Si has elegido la TV, espera...');
+  }
+  setTimeout(castDoReload, 15000);
+}
+
+function castDoReload() {
+  if (castSession) return;
+  if (!castRequestPending) return;
+  if (castCastState() === 'CONNECTED') {
+    castConnecting = false;
+    castRequestPending = false;
+    castReloadScheduled = false;
+    updateCastButton();
+    return;
+  }
   castConnecting = false;
   castRequestPending = false;
   if (castConnectTimer) { clearTimeout(castConnectTimer); castConnectTimer = null; }
-  if (castLoadTimer) { clearTimeout(castLoadTimer); castLoadTimer = null; }
   updateCastButton();
-  showToast((reason ? reason + '. ' : '') + 'Recargando para reiniciar la conexión...');
+  showToast('La conexión quedó bloqueada. Recargando para reintentar...');
   setTimeout(function() {
     if (castSession) { castReloadScheduled = false; return; }
     location.reload();
@@ -1336,9 +1368,7 @@ function connectToTv() {
   castRequestPending = true;
   updateCastButton();
   if (castConnectTimer) { clearTimeout(castConnectTimer); castConnectTimer = null; }
-  castConnectTimer = setTimeout(function() {
-    castResetAndReload('Sin respuesta del Google TV');
-  }, 30000);
+  castConnectTimer = setTimeout(castCheckAndRecover, 30000);
   var req;
   try {
     req = castContext.requestSession();
@@ -1348,7 +1378,7 @@ function connectToTv() {
     if (castConnectTimer) { clearTimeout(castConnectTimer); castConnectTimer = null; }
     updateCastButton();
     console.error('[Cast] requestSession lanzó excepción (intento previo aún en curso)', e);
-    castResetAndReload('El intento de conexión quedó bloqueado');
+    castDoReload();
     return;
   }
   req.then(function() {
@@ -1365,7 +1395,7 @@ function connectToTv() {
     updateCastButton();
     console.error('[Cast] requestSession error', err, castErrInfo(err));
     if (castIsInvalidParam(err)) {
-      castResetAndReload('El intento de conexión quedó bloqueado');
+      castDoReload();
     } else {
       showToast('No se pudo conectar: ' + castErrInfo(err) + '. ' + castHint(err && err.code));
     }
