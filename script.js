@@ -1635,6 +1635,9 @@ function bindEvents() {
       for (var k = 0; k < canales.length; k++) if (canales[k].id === idInput) return canales[k];
       var favs = favoritos.tv || [];
       for (var f = 0; f < favs.length; f++) if (favs[f].id === idInput) return favs[f];
+      if (canalesGlobal) {
+        for (var g = 0; g < canalesGlobal.length; g++) if (canalesGlobal[g].id === idInput) return canalesGlobal[g];
+      }
       return null;
     };
     var btnFav = e.target.closest('.btn-fav');
