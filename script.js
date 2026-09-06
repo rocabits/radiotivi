@@ -1319,7 +1319,7 @@ function connectToTv() {
   castConnectTimer = setTimeout(function() {
     castConnectTimer = null;
     if (castRequestPending) showToast('La conexión tarda más de lo normal. Comprueba que el Google TV esté encendido.');
-  }, 45000);
+  }, 30000);
   var req;
   try {
     req = castContext.requestSession();
