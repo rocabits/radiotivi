@@ -510,6 +510,12 @@ header {
   transform: scale(0.99);
 }
 
+.result-item.casting {
+  border: 2px solid var(--primary);
+  background: color-mix(in srgb, var(--primary) 12%, var(--card-bg));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 25%, transparent);
+}
+
 .result-logo {
   width: 44px;
   height: 44px;

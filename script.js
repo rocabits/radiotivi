@@ -1035,6 +1035,8 @@ function tvRenderBatch() {
       : tvFiltered.length + ' canales';
   }
 
+  markActiveTvCard();
+
   if (tvShown < tvFiltered.length) {
     if (!tvRenderScheduled) {
       tvRenderScheduled = true;
@@ -1146,6 +1148,7 @@ function initializeCastApi() {
       stopLocalPlayback();
       startCastPlayback(currentTvChannel);
     }
+    markActiveTvCard();
   });
   sm.addEventListener(cast.framework.SessionManagerEventType.SESSION_ENDED, function() {
     castSession = null;
@@ -1158,6 +1161,7 @@ function initializeCastApi() {
     if (castLoadTimer) { clearTimeout(castLoadTimer); castLoadTimer = null; }
     updateCastButton();
     resumeLocalPlayback();
+    markActiveTvCard();
   });
   sm.addEventListener(cast.framework.SessionManagerEventType.SESSION_START_FAILED, function(ev) {
     var err = ev && ev.error;
@@ -1428,6 +1432,7 @@ function stopCasting(msg) {
   if (msg) showToast(msg);
   else showToast('Proyección detenida');
   updateCastButton();
+  markActiveTvCard();
   castDiag('sesion terminada (parada manual)');
 }
 
@@ -1444,6 +1449,15 @@ function updateCastButton() {
     castDiag('estado: conectando (naranja)');
   } else {
     castDiag('estado: desconectado (gris)');
+  }
+}
+
+function markActiveTvCard() {
+  var cards = document.querySelectorAll('#tvResults .tv-item');
+  var playingId = (castSession && currentTvChannel) ? currentTvChannel.id : null;
+  for (var i = 0; i < cards.length; i++) {
+    if (cards[i].dataset.id === playingId) cards[i].classList.add('casting');
+    else cards[i].classList.remove('casting');
   }
 }
 
@@ -1834,6 +1848,7 @@ function bindEvents() {
           stopAudio();
           castDiag('tarjeta pulsada con sesion activa, enviando ' + ch2.nombre);
           startCastPlayback(ch2);
+          markActiveTvCard();
         } else {
           openVideoModal(ch2);
         }
