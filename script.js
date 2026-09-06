@@ -1674,46 +1674,66 @@ if ('serviceWorker' in navigator) {
 
 // ========== PWA INSTALL ==========
 var deferredInstallPrompt = null;
-var installButton = null;
+var installDismissed = false;
 
-function setupInstallButton() {
-  installButton = document.getElementById('installBtn');
-  if (!installButton) return;
+function setupInstallPrompt() {
+  var modal = document.getElementById('installModal');
+  if (!modal) return;
 
   window.addEventListener('beforeinstallprompt', function(e) {
     e.preventDefault();
     deferredInstallPrompt = e;
-    installButton.classList.remove('hidden');
+    if (!installDismissed && !isStandalone()) {
+      openInstallModal();
+    }
   });
 
-  installButton.addEventListener('click', function() {
+  document.getElementById('btnInstallOk').addEventListener('click', function() {
     if (!deferredInstallPrompt) return;
+    closeInstallModal();
     deferredInstallPrompt.prompt();
     deferredInstallPrompt.userChoice.then(function(choice) {
       if (choice.outcome === 'accepted') {
-        hideInstallButton();
+        installDismissed = true;
       }
       deferredInstallPrompt = null;
     });
   });
 
-  window.addEventListener('appinstalled', function() {
-    hideInstallButton();
-    deferredInstallPrompt = null;
+  document.getElementById('btnInstallLater').addEventListener('click', function() {
+    installDismissed = true;
+    closeInstallModal();
   });
 
-  if (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) {
-    hideInstallButton();
-  }
+  document.getElementById('installModalOverlay').addEventListener('click', function() {
+    installDismissed = true;
+    closeInstallModal();
+  });
+
+  window.addEventListener('appinstalled', function() {
+    installDismissed = true;
+    closeInstallModal();
+    deferredInstallPrompt = null;
+  });
 }
 
-function hideInstallButton() {
-  if (installButton) installButton.classList.add('hidden');
+function openInstallModal() {
+  var modal = document.getElementById('installModal');
+  if (modal) modal.classList.add('open');
+}
+
+function closeInstallModal() {
+  var modal = document.getElementById('installModal');
+  if (modal) modal.classList.remove('open');
+}
+
+function isStandalone() {
+  return window.matchMedia && window.matchMedia('(display-mode: standalone)').matches;
 }
 
 // ========== INIT ==========
 function init() {
-  setupInstallButton();
+  setupInstallPrompt();
   initSupabase();
   castReadySafe();
 

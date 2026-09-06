@@ -248,37 +248,6 @@ header {
   white-space: nowrap;
 }
 
-/* Install PWA button */
-.header-right {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.header-install-btn {
-  display: none;
-  width: 40px;
-  height: 40px;
-  border-radius: 10px;
-  border: none;
-  background: rgba(255, 255, 255, 0.15);
-  color: white;
-  cursor: pointer;
-  flex-shrink: 0;
-  align-items: center;
-  justify-content: center;
-  transition: background 0.2s;
-}
-
-.header-install-btn:not(.hidden) {
-  display: flex;
-}
-
-.header-install-btn:hover,
-.header-install-btn:focus-visible {
-  background: rgba(255, 255, 255, 0.25);
-}
-
 /* ========== SEARCH BAR ========== */
 .search-bar {
   display: flex;
@@ -1013,6 +982,55 @@ header {
 
 .btn-confirm-ok:active {
   transform: scale(0.97);
+}
+
+/* ========== INSTALL MODAL ========== */
+.install-modal .modal-panel {
+  max-width: 320px;
+  margin: 0 auto;
+  border-radius: var(--radius);
+  text-align: center;
+  padding: 32px 24px 24px;
+}
+
+.install-panel {
+  transform: translateY(0) scale(0.9);
+  opacity: 0;
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s;
+}
+
+.install-modal.open .install-panel {
+  transform: translateY(0) scale(1);
+  opacity: 1;
+}
+
+.install-icon {
+  margin-bottom: 16px;
+  display: flex;
+  justify-content: center;
+}
+
+.install-title {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 8px;
+}
+
+.install-text {
+  font-size: 15px;
+  color: var(--text-secondary);
+  line-height: 1.4;
+  margin-bottom: 24px;
+}
+
+.install-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.install-modal #btnInstallOk {
+  background: var(--primary);
 }
 
 /* ========== BUTTONS ========== */

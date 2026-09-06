@@ -59,15 +59,6 @@
               <h1 id="headerTitle">RADIOTIVI</h1>
             </div>
           </div>
-          <div class="header-right">
-            <button class="header-install-btn hidden" id="installBtn" aria-label="Instalar app" title="Instalar app">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                <polyline points="7 10 12 15 17 10"/>
-                <line x1="12" y1="15" x2="12" y2="3"/>
-              </svg>
-            </button>
-          </div>
         </div>
       </header>
 
@@ -248,6 +239,24 @@
       <div class="confirm-actions">
         <button class="btn-confirm-cancel" id="btnConfirmCancel">Cancelar</button>
         <button class="btn-confirm-ok" id="btnConfirmOk">Eliminar</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal install-modal" id="installModal">
+    <div class="modal-overlay" id="installModalOverlay"></div>
+    <div class="modal-panel install-panel" id="installModalPanel">
+      <div class="install-icon">
+        <svg width="64" height="64" viewBox="0 0 100 100" fill="#2ecc71">
+          <circle cx="50" cy="50" r="38" fill="white"/>
+          <path d="M41 34 L66 50 L41 66 Z" fill="#2ecc71"/>
+        </svg>
+      </div>
+      <h2 class="install-title">Instalar RADIOTIVI</h2>
+      <p class="install-text">Acceso directo desde tu pantalla de inicio con icono propio y apertura a pantalla completa.</p>
+      <div class="install-actions">
+        <button class="btn-confirm-cancel" id="btnInstallLater">&iexcl;Ahora no!</button>
+        <button class="btn-confirm-ok" id="btnInstallOk">Instalar</button>
       </div>
     </div>
   </div>
