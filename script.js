@@ -35,6 +35,7 @@ var castAvailable = false;
 var castContext = null;
 var castSession = null;
 var castPlaybackStarted = false;
+var castStoppedByUser = false;
 var currentTvChannel = null;
 // Radio country state
 var radioCountries = [];
@@ -1109,6 +1110,15 @@ function initializeCastApi() {
   });
   var sm = castContext.getSessionManager();
   sm.addEventListener(cast.framework.SessionManagerEventType.SESSION_STARTED, function() {
+    if (castStoppedByUser) {
+      castDiag('sesion iniciada tras parada manual -> ignorada');
+      try { castContext.endCurrentSession(true); } catch (e) {}
+      castSession = null;
+      castConnecting = false;
+      if (castConnectTimer) { clearTimeout(castConnectTimer); castConnectTimer = null; }
+      updateCastButton();
+      return;
+    }
     castSession = sm.getCurrentSession();
     castPlaybackStarted = false;
     castConnecting = false;
@@ -1293,6 +1303,7 @@ function toggleCast() {
 }
 
 function connectToTv() {
+  castStoppedByUser = false;
   castConnecting = true;
   updateCastButton();
   if (castConnectTimer) { clearTimeout(castConnectTimer); castConnectTimer = null; }
@@ -1305,23 +1316,14 @@ function connectToTv() {
   castContext.requestSession().then(function(sess) {
     castConnecting = false;
     if (castConnectTimer) { clearTimeout(castConnectTimer); castConnectTimer = null; }
-    if (sess && !castSession) castSession = sess;
     updateCastButton();
-    console.log('[Cast] requestSession ok', sess ? 'session via promise' : 'sin session en promise');
+    console.log('[Cast] requestSession ok', sess ? 'sess recibida (el evento SESSION_STARTED es quien fija el estado)' : 'sin sess en promise');
   }).catch(function(err) {
     castConnecting = false;
     if (castConnectTimer) { clearTimeout(castConnectTimer); castConnectTimer = null; }
+    castSession = null;
     updateCastButton();
     console.error('[Cast] requestSession error', err, castErrInfo(err));
-    var cur = null;
-    try { cur = castContext.getCurrentSession(); } catch (e) {}
-    if (cur) {
-      castSession = cur;
-      castPlaybackStarted = false;
-      updateCastButton();
-      if (currentTvChannel) startCastPlayback(currentTvChannel);
-      return;
-    }
     showToast('No se pudo conectar: ' + castErrInfo(err) + '. ' + castHint(err && err.code));
   });
 }
@@ -1332,6 +1334,7 @@ function stopCasting(msg) {
   castConnecting = false;
   castPlaybackStarted = false;
   castMedia = null;
+  castStoppedByUser = true;
   try { castContext.endCurrentSession(true); } catch (e) {}
   castSession = null;
   var st = document.getElementById('videoStatus');
