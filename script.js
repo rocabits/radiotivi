@@ -20,6 +20,9 @@ var radioTotal = 0;
 var tvFiltered = [];
 var tvShown = 0;
 var tvGroupsBuilt = false;
+var tvRenderBatchSize = 50;
+var tvRenderScheduled = false;
+var tvSearchSeq = 0;
 
 // Player state
 var audioEl = null;
@@ -48,6 +51,7 @@ var radioActiveCountriesKey = 'radiotivi-radiocountries-active';
 var radioFavOnly = true;
 var tvFavOnly = true;
 var currentRadioList = [];
+var radioSearchSeq = 0;
 
 // Cache de canales m3u parseados
 var canalesCacheKey = 'radiotivi-tvcanales';
@@ -952,10 +956,15 @@ function renderTv() {
   }
 
   if (q) {
-    container.innerHTML = '<div class="empty-content"><p class="empty-text">Buscando...</p></div>';
-    if (count) count.textContent = '';
+    tvSearchSeq++;
+    var mySeq = tvSearchSeq;
     var marker = q;
+    if (container.children.length === 0) {
+      container.innerHTML = '<div class="empty-content"><p class="empty-text">Buscando...</p></div>';
+      if (count) count.textContent = '';
+    }
     ensureGlobalTv().then(function(global) {
+      if (mySeq !== tvSearchSeq) return;
       if (document.getElementById('tvSearch').value.trim().toLowerCase() !== marker) return;
       tvFiltered = global.filter(function(c) {
         return c.nombre.toLowerCase().indexOf(marker) !== -1;
@@ -985,10 +994,10 @@ function renderTv() {
 
 function tvRenderBatch() {
   var container = document.getElementById('tvResults');
-  var inner = container.querySelector('.results-list-inner');
+  var inner = container && container.querySelector('.results-list-inner');
   if (!inner) return;
   var html = '';
-  var end = tvFiltered.length;
+  var end = Math.min(tvShown + tvRenderBatchSize, tvFiltered.length);
   for (var i = tvShown; i < end; i++) {
     var c = tvFiltered[i];
     var cPath = (c.pais || '').trim() || tvCountryName(tvCountryCode);
@@ -1021,6 +1030,16 @@ function tvRenderBatch() {
     count.textContent = tvFavOnly
       ? tvFiltered.length + ' favoritos'
       : tvFiltered.length + ' canales';
+  }
+
+  if (tvShown < tvFiltered.length) {
+    if (!tvRenderScheduled) {
+      tvRenderScheduled = true;
+      requestAnimationFrame(function() {
+        tvRenderScheduled = false;
+        tvRenderBatch();
+      });
+    }
   }
 }
 
@@ -1596,8 +1615,15 @@ function bindEvents() {
         return;
       }
       radiosSearchActive = true;
-      document.getElementById('radioResults').innerHTML = '<div class="empty-content"><p class="empty-text">Buscando...</p></div>';
+      radioSearchSeq++;
+      var mySeq = radioSearchSeq;
+      var results = document.getElementById('radioResults');
+      if (results.children.length === 0) {
+        results.innerHTML = '<div class="empty-content"><p class="empty-text">Buscando...</p></div>';
+      }
       searchRadio(q).then(function(list) {
+        if (mySeq !== radioSearchSeq) return;
+        if (radioSearch.value.trim() !== q) return;
         radios = list;
         renderRadio();
       });
