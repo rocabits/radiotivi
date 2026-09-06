@@ -1158,9 +1158,9 @@ function castErrInfo(err) {
 }
 
 function castHint(code) {
-  if (code === 'session_error') return 'Receptor confirmado pero sesion rechazada. Prueba: 1) elegir el Chromecast externo, 2) actualizar \'Google Cast\' desde la Play Store de la TV, 3) reiniciar la TV.';
-  if (code === 'timeout') return 'Tiempo de espera agotado al conectar. Reinicia la TV y reintenta.';
-  return 'Si persiste, prueba con el Chromecast externo o actualiza Google Cast en la TV.';
+  if (code === 'session_error') return 'El receptor de la TV rechazo la sesion. Actualiza la app "Google Cast" en la TV (Play Store) y reinicia el Google TV.';
+  if (code === 'timeout') return 'Tiempo de espera agotado al conectar. Reinicia el Google TV y reintenta.';
+  return 'Si persiste, actualiza "Google Cast" en la TV y reinicia el Google TV.';
 }
 
 function startCastPlayback(c) {
@@ -1208,12 +1208,15 @@ function toggleCast() {
   } else {
     castConnecting = true;
     var stc = document.getElementById('videoStatus');
-    if (stc) stc.textContent = 'Buscando dispositivo...';
+    if (stc) stc.textContent = 'Conectando con el Google TV...';
+    updateCastButton();
     castContext.requestSession().then(function() {
       castConnecting = false;
+      updateCastButton();
       console.log('[Cast] requestSession ok');
     }).catch(function(err) {
       castConnecting = false;
+      updateCastButton();
       console.error('[Cast] requestSession error', err, castErrInfo(err));
       var cur = null;
       try { cur = castContext.getCurrentSession(); } catch (e) {}
@@ -1236,6 +1239,7 @@ function updateCastButton() {
   if (!btn) return;
   btn.hidden = false;
   btn.classList.toggle('active', !!castSession);
+  btn.classList.toggle('connecting', !!castConnecting);
 }
 
 function resumeLocalPlayback() {
