@@ -1385,15 +1385,27 @@ function connectToTv() {
     castRequestPending = false;
     castConnecting = false;
     if (castConnectTimer) { clearTimeout(castConnectTimer); castConnectTimer = null; }
+    var live = null;
+    try { live = castContext ? castContext.getCurrentSession() : null; } catch (e) {}
+    if (live && !castSession) castSession = live;
     updateCastButton();
     console.log('[Cast] requestSession completado (estado real por SESSION_STARTED)');
   }).catch(function(err) {
     castRequestPending = false;
     castConnecting = false;
     if (castConnectTimer) { clearTimeout(castConnectTimer); castConnectTimer = null; }
+    console.error('[Cast] requestSession error', err, castErrInfo(err));
+    var live = null;
+    try { live = castContext ? castContext.getCurrentSession() : null; } catch (e) {}
+    if (live) {
+      castSession = live;
+      try { castMedia = castSession.getMediaSession() || null; } catch (e2) {}
+      updateCastButton();
+      console.log('[Cast] sesion activa pese al rechazo de requestSession -> boton verde');
+      return;
+    }
     castSession = null;
     updateCastButton();
-    console.error('[Cast] requestSession error', err, castErrInfo(err));
     if (castIsInvalidParam(err)) {
       castDoReload();
     } else {
