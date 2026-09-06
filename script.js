@@ -36,6 +36,7 @@ var castContext = null;
 var castSession = null;
 var castPlaybackStarted = false;
 var castStoppedByUser = false;
+var castRequestPending = false;
 var currentTvChannel = null;
 // Radio country state
 var radioCountries = [];
@@ -1122,6 +1123,7 @@ function initializeCastApi() {
     castSession = sm.getCurrentSession();
     castPlaybackStarted = false;
     castConnecting = false;
+    castRequestPending = false;
     if (castConnectTimer) { clearTimeout(castConnectTimer); castConnectTimer = null; }
     updateCastButton();
     try {
@@ -1149,6 +1151,7 @@ function initializeCastApi() {
     castMedia = null;
     castPlaybackStarted = false;
     castConnecting = false;
+    castRequestPending = false;
     castLoadAttempt = 0;
     if (castConnectTimer) { clearTimeout(castConnectTimer); castConnectTimer = null; }
     if (castLoadTimer) { clearTimeout(castLoadTimer); castLoadTimer = null; }
@@ -1159,6 +1162,7 @@ function initializeCastApi() {
     var err = ev && ev.error;
     console.error('[Cast] SESSION_START_FAILED', err, castErrInfo(err));
     castConnecting = false;
+    castRequestPending = false;
     if (castConnectTimer) { clearTimeout(castConnectTimer); castConnectTimer = null; }
     updateCastButton();
     showToast('Error al conectar: ' + castErrInfo(err) + '. ' + castHint(err && err.code));
@@ -1299,26 +1303,42 @@ function toggleCast() {
     showToast('Conectando con el Google TV...');
     return;
   }
+  if (castRequestPending) {
+    showToast('La conexión anterior sigue en curso. Espera o recarga la página.');
+    return;
+  }
   connectToTv();
 }
 
 function connectToTv() {
   castStoppedByUser = false;
   castConnecting = true;
+  castRequestPending = true;
   updateCastButton();
   if (castConnectTimer) { clearTimeout(castConnectTimer); castConnectTimer = null; }
   castConnectTimer = setTimeout(function() {
-    castConnecting = false;
     castConnectTimer = null;
-    updateCastButton();
-    showToast('No se pudo conectar (tiempo agotado). Reinicia el Google TV y vuelve a intentar.');
+    if (castRequestPending) showToast('La conexión tarda más de lo normal. Comprueba que el Google TV esté encendido.');
   }, 45000);
-  castContext.requestSession().then(function(sess) {
+  var req;
+  try {
+    req = castContext.requestSession();
+  } catch (e) {
+    castRequestPending = false;
+    castConnecting = false;
+    updateCastButton();
+    console.error('[Cast] requestSession lanzó excepción (posible intento previo en curso)', e);
+    showToast('Ya hay una conexión anterior en curso. Espera unos segundos y vuelve a intentar.');
+    return;
+  }
+  req.then(function() {
+    castRequestPending = false;
     castConnecting = false;
     if (castConnectTimer) { clearTimeout(castConnectTimer); castConnectTimer = null; }
     updateCastButton();
-    console.log('[Cast] requestSession ok', sess ? 'sess recibida (el evento SESSION_STARTED es quien fija el estado)' : 'sin sess en promise');
+    console.log('[Cast] requestSession completado (estado real por SESSION_STARTED)');
   }).catch(function(err) {
+    castRequestPending = false;
     castConnecting = false;
     if (castConnectTimer) { clearTimeout(castConnectTimer); castConnectTimer = null; }
     castSession = null;
