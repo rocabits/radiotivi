@@ -1318,17 +1318,27 @@ function connectToTv() {
   if (castConnectTimer) { clearTimeout(castConnectTimer); castConnectTimer = null; }
   castConnectTimer = setTimeout(function() {
     castConnectTimer = null;
-    if (castRequestPending) showToast('La conexión tarda más de lo normal. Comprueba que el Google TV esté encendido.');
+    if (castRequestPending) {
+      castConnecting = false;
+      castRequestPending = false;
+      updateCastButton();
+      showToast('Sin respuesta del Google TV. Pulsa de nuevo para reintentar.');
+    }
   }, 30000);
   var req;
   try {
     req = castContext.requestSession();
   } catch (e) {
-    castRequestPending = false;
     castConnecting = false;
+    castRequestPending = false;
+    if (castConnectTimer) { clearTimeout(castConnectTimer); castConnectTimer = null; }
     updateCastButton();
-    console.error('[Cast] requestSession lanzó excepción (posible intento previo en curso)', e);
-    showToast('Ya hay una conexión anterior en curso. Espera unos segundos y vuelve a intentar.');
+    console.error('[Cast] requestSession lanzó excepción (intento previo aún en curso)', e);
+    setTimeout(function() {
+      if (castSession) return;
+      showToast('La TV no respondió. Recargando para reiniciar la conexión...');
+      setTimeout(function() { location.reload(); }, 1200);
+    }, 300);
     return;
   }
   req.then(function() {
