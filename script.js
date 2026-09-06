@@ -946,9 +946,7 @@ function renderTv() {
   var q = document.getElementById('tvSearch').value.trim().toLowerCase();
 
   if (tvFavOnly) {
-    tvFiltered = (favoritos.tv || []).filter(function(c) {
-      return !q || c.nombre.toLowerCase().indexOf(q) !== -1;
-    });
+    tvFiltered = favoritos.tv || [];
     finalizeTvRender(container, count);
     return;
   }
