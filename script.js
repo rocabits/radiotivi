@@ -1167,9 +1167,17 @@ function castHint(code) {
   return 'Si persiste, actualiza "Google Cast" en la TV y reinicia el Google TV.';
 }
 
+function castDiag(msg) {
+  var el = document.getElementById('castDiag');
+  if (!el) return;
+  var t = new Date().toLocaleTimeString();
+  el.textContent = '[' + t + '] ' + msg + '\n' + el.textContent;
+}
+
 function startCastPlayback(c) {
   if (!c || !castSession) return;
   var statusEl = document.getElementById('videoStatus');
+  castDiag('inicio loadMedia: ' + c.url);
   try {
     var url = c.url;
     var contentType = 'application/x-mpegURL';
@@ -1182,17 +1190,23 @@ function startCastPlayback(c) {
     mediaInfo.metadata = meta;
     var request = new chrome.cast.media.LoadRequest(mediaInfo);
     if (statusEl) statusEl.textContent = 'Enviando a la TV...';
+    castDiag('enviando ' + contentType);
     console.log('[Cast] loadMedia', url, contentType);
     castSession.loadMedia(request).then(function() {
       castPlaybackStarted = true;
       if (statusEl) statusEl.textContent = 'Reproduciendo en la TV';
+      castDiag('loadMedia OK');
     }).catch(function(err) {
       console.error('[Cast] loadMedia error', err);
       if (statusEl) statusEl.textContent = 'No se pudo enviar a la TV: ' + castFriendlyError(err && err.code);
+      castDiag('FALLO loadMedia: ' + castErrInfo(err));
+      var de = document.getElementById('castDiag');
+      if (de && de.textContent) de.hidden = false;
     });
   } catch (e) {
     console.error('[Cast] loadMedia throw', e);
     if (statusEl) statusEl.textContent = 'No se pudo enviar a la TV';
+    castDiag('throw loadMedia: ' + e);
   }
 }
 
@@ -1289,6 +1303,8 @@ function openVideoModal(c) {
   try { video.load(); } catch(e) {}
   if (currentHls) { currentHls.destroy(); currentHls = null; }
   statusEl.textContent = 'Cargando...';
+  var diagEl = document.getElementById('castDiag');
+  if (diagEl) { diagEl.textContent = ''; diagEl.hidden = true; }
   document.getElementById('videoModal').classList.add('open');
   document.body.style.overflow = 'hidden';
   updateCastButton();

@@ -855,8 +855,7 @@ header {
 
 .video-container {
   position: relative;
-  width: 100%;
-  aspect-ratio: 16 / 9;
+  width: 100%;  aspect-ratio: 16 / 9;
   max-height: 60vh;
   background: #000;
   border-radius: var(--radius-sm);
@@ -886,6 +885,17 @@ header {
 .cast-status.no {
   color: #e67e22;
   opacity: 1;
+}
+
+.cast-diag {
+  margin-top: 8px;
+  font-size: 11px;
+  line-height: 1.5;
+  color: #e67e22;
+  word-break: break-all;
+  white-space: pre-wrap;
+  max-height: 120px;
+  overflow: auto;
 }
 
 /* ========== CONFIRM MODAL ========== */
