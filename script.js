@@ -1113,7 +1113,7 @@ function initializeCastApi() {
     updateCastButton();
     updateCastStatus();
     var st = document.getElementById('videoStatus');
-    if (st) st.textContent = 'Error al conectar: ' + castErrInfo(err);
+    if (st) st.textContent = 'Error al conectar: ' + castErrInfo(err) + '. ' + castHint(err && err.code);
   });
   updateCastButton();
   updateCastStatus();
@@ -1155,6 +1155,12 @@ function castErrInfo(err) {
   } catch (e) {
     return 'error desconocido';
   }
+}
+
+function castHint(code) {
+  if (code === 'session_error') return 'Receptor confirmado pero sesion rechazada. Prueba: 1) elegir el Chromecast externo, 2) actualizar \'Google Cast\' desde la Play Store de la TV, 3) reiniciar la TV.';
+  if (code === 'timeout') return 'Tiempo de espera agotado al conectar. Reinicia la TV y reintenta.';
+  return 'Si persiste, prueba con el Chromecast externo o actualiza Google Cast en la TV.';
 }
 
 function startCastPlayback(c) {
@@ -1220,7 +1226,7 @@ function toggleCast() {
         return;
       }
       var ste = document.getElementById('videoStatus');
-      if (ste) ste.textContent = 'No se pudo conectar: ' + castErrInfo(err);
+      if (ste) ste.textContent = 'No se pudo conectar: ' + castErrInfo(err) + '. ' + castHint(err && err.code);
     });
   }
 }
