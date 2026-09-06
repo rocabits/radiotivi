@@ -388,6 +388,39 @@ header {
   color: #fff;
 }
 
+/* Cast button in TV filters row (same look as favorites button) */
+.filters-row button.cast-btn {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: 2px solid var(--border);
+  border-radius: var(--radius-xs);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--text);
+  background: var(--card-bg);
+  transition: all 0.2s;
+}
+
+.filters-row button.cast-btn:hover,
+.filters-row button.cast-btn:focus-visible {
+  border-color: var(--primary);
+}
+
+.filters-row button.cast-btn.connecting {
+  color: #e67e22;
+  border-color: rgba(230, 126, 34, 0.6);
+}
+
+.filters-row button.cast-btn.active {
+  border-color: var(--primary);
+  background: var(--primary);
+  color: #fff;
+}
+
 /* Count bar */
 .count-bar {
   font-size: 13px;
@@ -874,28 +907,6 @@ header {
   color: var(--text-light);
   text-align: center;
   min-height: 20px;
-}
-
-.cast-status {
-  font-size: 12px;
-  opacity: 0.75;
-  min-height: 16px;
-}
-
-.cast-status.no {
-  color: #e67e22;
-  opacity: 1;
-}
-
-.cast-diag {
-  margin-top: 8px;
-  font-size: 11px;
-  line-height: 1.5;
-  color: #e67e22;
-  word-break: break-all;
-  white-space: pre-wrap;
-  max-height: 120px;
-  overflow: auto;
 }
 
 /* ========== CONFIRM MODAL ========== */

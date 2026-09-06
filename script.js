@@ -1060,7 +1060,6 @@ var castConnectTimer = null;
 var castLoadTimer = null;
 var castLoadAttempt = 0;
 var castMedia = null;
-var castPaused = false;
 
 function castReadySafe() {
   try {
@@ -1074,14 +1073,13 @@ function castReadySafe() {
       initializeCastApi();
     }
     updateCastButton();
-    updateCastStatus();
   } catch (e) {
     if (castInitAttempts < 5) {
       castInitAttempts = castInitAttempts + 1;
       setTimeout(castReadySafe, 1000);
     } else {
       castAvailable = false;
-      updateCastStatus();
+      updateCastButton();
     }
   }
 }
@@ -1096,11 +1094,9 @@ function initializeCastApi() {
   sm.addEventListener(cast.framework.SessionManagerEventType.SESSION_STARTED, function() {
     castSession = sm.getCurrentSession();
     castPlaybackStarted = false;
-    castPaused = false;
     castConnecting = false;
     if (castConnectTimer) { clearTimeout(castConnectTimer); castConnectTimer = null; }
     updateCastButton();
-    updateCastStatus();
     try {
       if (castSession) {
         try { castMedia = castSession.getMediaSession() || null; } catch (e) {}
@@ -1109,16 +1105,8 @@ function initializeCastApi() {
           var ms = data.media;
           if (ms && ms.playerState) {
             castMedia = ms;
-            castPaused = ms.playerState === 'PAUSED' || ms.playerState === 'IDLE';
-            var stv = document.getElementById('videoStatus');
-            if (castPaused) {
-              if (stv) stv.textContent = 'En pausa en la TV';
-              castDiag('MEDIA_STATUS: ' + ms.playerState);
-            } else {
-              castPlaybackStarted = true;
-              if (stv) stv.textContent = 'Reproduciendo en la TV';
-              castDiag('MEDIA_STATUS activo: ' + ms.playerState);
-            }
+            castPlaybackStarted = ms.playerState === 'PLAYING' || ms.playerState === 'BUFFERING';
+            castDiag('MEDIA_STATUS: ' + ms.playerState);
             updateCastButton();
           }
         });
@@ -1132,13 +1120,11 @@ function initializeCastApi() {
     castSession = null;
     castMedia = null;
     castPlaybackStarted = false;
-    castPaused = false;
     castConnecting = false;
     castLoadAttempt = 0;
     if (castConnectTimer) { clearTimeout(castConnectTimer); castConnectTimer = null; }
     if (castLoadTimer) { clearTimeout(castLoadTimer); castLoadTimer = null; }
     updateCastButton();
-    updateCastStatus();
     resumeLocalPlayback();
   });
   sm.addEventListener(cast.framework.SessionManagerEventType.SESSION_START_FAILED, function(ev) {
@@ -1147,28 +1133,9 @@ function initializeCastApi() {
     castConnecting = false;
     if (castConnectTimer) { clearTimeout(castConnectTimer); castConnectTimer = null; }
     updateCastButton();
-    updateCastStatus();
-    var st = document.getElementById('videoStatus');
-    if (st) st.textContent = 'Error al conectar: ' + castErrInfo(err) + '. ' + castHint(err && err.code);
+    showToast('Error al conectar: ' + castErrInfo(err) + '. ' + castHint(err && err.code));
   });
   updateCastButton();
-  updateCastStatus();
-}
-
-function isCasting() {
-  return !!(castContext && castSession);
-}
-
-function updateCastStatus() {
-  var el = document.getElementById('castStatus');
-  if (!el) return;
-  if (castAvailable) {
-    el.textContent = 'Google Cast: disponible';
-    el.classList.remove('no');
-  } else {
-    el.textContent = 'Google Cast: no disponible en este navegador';
-    el.classList.add('no');
-  }
 }
 
 function castFriendlyError(code) {
@@ -1200,10 +1167,7 @@ function castHint(code) {
 }
 
 function castDiag(msg) {
-  var el = document.getElementById('castDiag');
-  if (!el) return;
-  var t = new Date().toLocaleTimeString();
-  el.textContent = '[' + t + '] ' + msg + '\n' + el.textContent;
+  console.log('[Cast]', msg);
 }
 
 function startCastPlayback(c) {
@@ -1224,7 +1188,6 @@ function startCastPlayback(c) {
     if (existing && existing.media && existing.media.contentId === url) {
       castDiag('media ya cargado, pidiendo castSession.play()');
       if (statusEl) statusEl.textContent = 'Iniciando reproducción en la TV...';
-      castPaused = false;
       castPlaybackStarted = true;
       updateCastButton();
       castSession.play().then(function() {
@@ -1235,8 +1198,7 @@ function startCastPlayback(c) {
       }, function(err) {
         if (statusEl) statusEl.textContent = 'No se pudo reproducir en la TV: ' + castFriendlyError(err && err.code);
         castDiag('FALLO castSession.play(): ' + castErrInfo(err));
-        var de = document.getElementById('castDiag');
-        if (de && de.textContent) de.hidden = false;
+        showToast('No se pudo reproducir en la TV: ' + castFriendlyError(err && err.code));
       });
       return;
     }
@@ -1247,7 +1209,6 @@ function startCastPlayback(c) {
     mediaInfo.metadata = meta;
     var request = new chrome.cast.media.LoadRequest(mediaInfo);
     request.autoplay = true;
-    castPaused = false;
     castPlaybackStarted = true;
     if (statusEl) statusEl.textContent = 'Enviando a la TV...';
     castDiag('loadMedia ' + contentType + ' (intento ' + (castLoadAttempt + 1) + ')');
@@ -1264,8 +1225,7 @@ function startCastPlayback(c) {
       } else {
         castLoadAttempt = 0;
         if (statusEl) statusEl.textContent = 'No se pudo cargar el canal en la TV. Pulsa proyectar para reintentar o prueba otro canal.';
-        var de = document.getElementById('castDiag');
-        if (de && de.textContent) de.hidden = false;
+        showToast('No se pudo cargar el canal en la TV. Pulsa proyectar para reintentar o prueba otro canal.');
         updateCastButton();
       }
     }, 20000);
@@ -1277,7 +1237,6 @@ function startCastPlayback(c) {
       castDiag('loadMedia confirmado');
       try { castSession.play(); } catch (e2) {}
       castPlaybackStarted = true;
-      castPaused = false;
       updateCastButton();
     }).catch(function(err) {
       if (castLoadTimer) { clearTimeout(castLoadTimer); castLoadTimer = null; }
@@ -1287,8 +1246,7 @@ function startCastPlayback(c) {
       console.error('[Cast] loadMedia error', err);
       if (statusEl) statusEl.textContent = 'No se pudo cargar el canal en la TV: ' + castFriendlyError(err && err.code) + '. Prueba otro canal.';
       castDiag('FALLO loadMedia: ' + castErrInfo(err));
-      var de = document.getElementById('castDiag');
-      if (de && de.textContent) de.hidden = false;
+      showToast('No se pudo cargar el canal en la TV: ' + castFriendlyError(err && err.code) + '. Prueba otro canal.');
     });
   } catch (e) {
     console.error('[Cast] loadMedia throw', e);
@@ -1296,60 +1254,35 @@ function startCastPlayback(c) {
     updateCastButton();
     if (statusEl) statusEl.textContent = 'No se pudo enviar a la TV';
     castDiag('throw loadMedia: ' + e);
+    showToast('No se pudo enviar a la TV');
   }
-}
-
-function castActuallyPlaying() {
-  return !!castSession && castPlaybackStarted && !castPaused;
 }
 
 function toggleCast() {
-  if (!castContext) {
-    var stNo = document.getElementById('videoStatus');
-    if (stNo) stNo.textContent = 'Tu navegador no soporta Chromecast';
+  if (!castContext || !castAvailable) {
+    showToast('Tu navegador no soporta Chromecast');
     return;
   }
   if (castConnecting) {
-    var stCon = document.getElementById('videoStatus');
-    if (stCon) stCon.textContent = 'Conectando con el Google TV...';
+    showToast('Conectando con el Google TV...');
     return;
   }
-  if (!castSession) {
-    if (!castAvailable) {
-      var stUn = document.getElementById('videoStatus');
-      if (stUn) stUn.textContent = 'Tu navegador no soporta Chromecast';
-      return;
-    }
-    connectToTv();
+  if (castSession) {
+    stopCasting('Proyección detenida');
     return;
   }
-  if (currentTvChannel) {
-    if (castActuallyPlaying()) {
-      stopCasting('Proyección detenida');
-    } else {
-      var stRe = document.getElementById('videoStatus');
-      if (stRe) stRe.textContent = 'Reanudando en la TV...';
-      startCastPlayback(currentTvChannel);
-    }
-    return;
-  }
-  stopCasting('Proyección detenida');
+  connectToTv();
 }
 
 function connectToTv() {
   castConnecting = true;
-  var stc = document.getElementById('videoStatus');
-  if (stc) stc.textContent = 'Conectando con el Google TV...';
   updateCastButton();
   if (castConnectTimer) { clearTimeout(castConnectTimer); castConnectTimer = null; }
   castConnectTimer = setTimeout(function() {
     castConnecting = false;
     castConnectTimer = null;
     updateCastButton();
-    var stt = document.getElementById('videoStatus');
-    if (stt && stt.textContent.indexOf('Conectando') !== -1) {
-      stt.textContent = 'No se pudo conectar (tiempo agotado). Reinicia el Google TV y vuelve a intentar.';
-    }
+    showToast('No se pudo conectar (tiempo agotado). Reinicia el Google TV y vuelve a intentar.');
   }, 45000);
   castContext.requestSession().then(function() {
     castConnecting = false;
@@ -1366,14 +1299,11 @@ function connectToTv() {
     if (cur) {
       castSession = cur;
       castPlaybackStarted = false;
-      castPaused = false;
       updateCastButton();
-      updateCastStatus();
       if (currentTvChannel) startCastPlayback(currentTvChannel);
       return;
     }
-    var ste = document.getElementById('videoStatus');
-    if (ste) ste.textContent = 'No se pudo conectar: ' + castErrInfo(err) + '. ' + castHint(err && err.code);
+    showToast('No se pudo conectar: ' + castErrInfo(err) + '. ' + castHint(err && err.code));
   });
 }
 
@@ -1382,14 +1312,12 @@ function stopCasting(msg) {
   if (castLoadTimer) { clearTimeout(castLoadTimer); castLoadTimer = null; }
   castConnecting = false;
   castPlaybackStarted = false;
-  castPaused = false;
   castMedia = null;
   try { castContext.endCurrentSession(true); } catch (e) {}
   castSession = null;
   var st = document.getElementById('videoStatus');
   if (st) st.textContent = msg || 'Proyección detenida';
   updateCastButton();
-  updateCastStatus();
   castDiag('sesion terminada (parada manual)');
 }
 
@@ -1397,7 +1325,7 @@ function updateCastButton() {
   var btn = document.getElementById('castBtn');
   if (!btn) return;
   btn.hidden = false;
-  btn.classList.toggle('active', !!castSession && !!castPlaybackStarted);
+  btn.classList.toggle('active', !!castSession);
   btn.classList.toggle('connecting', !!castConnecting || !!castLoadTimer);
 }
 
@@ -1421,18 +1349,9 @@ function openVideoModal(c) {
   try { video.load(); } catch(e) {}
   if (currentHls) { currentHls.destroy(); currentHls = null; }
   statusEl.textContent = 'Cargando...';
-  var diagEl = document.getElementById('castDiag');
-  if (diagEl) { diagEl.textContent = ''; diagEl.hidden = true; }
   document.getElementById('videoModal').classList.add('open');
   document.body.style.overflow = 'hidden';
   updateCastButton();
-  updateCastStatus();
-
-  if (castSession) {
-    statusEl.textContent = 'Enviando a TV...';
-    startCastPlayback(c);
-    return;
-  }
 
   if (window.Hls && Hls.isSupported() && /\.m3u8/i.test(c.url)) {
     var hls = new Hls();
@@ -1469,7 +1388,6 @@ function closeVideoModal() {
   var videoStatus = document.getElementById('videoStatus');
   if (videoStatus) videoStatus.textContent = '';
   updateCastButton();
-  updateCastStatus();
 }
 
 // ========== NAVIGATION ==========
@@ -1771,7 +1689,16 @@ function bindEvents() {
       var it2 = e.target.closest('.result-item');
       var id2 = it2.dataset.id;
       var ch2 = findChannel(id2);
-      if (ch2) openVideoModal(ch2);
+      if (ch2) {
+        if (castSession) {
+          currentTvChannel = ch2;
+          stopAudio();
+          castDiag('tarjeta pulsada con sesion activa, enviando ' + ch2.nombre);
+          startCastPlayback(ch2);
+        } else {
+          openVideoModal(ch2);
+        }
+      }
     }
   });
 
