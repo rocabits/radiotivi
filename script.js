@@ -1056,6 +1056,7 @@ function updateFilterStates() {
 // ========== GOOGLE CAST ==========
 var castInitAttempts = 0;
 var castConnecting = false;
+var castConnectTimer = null;
 
 function castReadySafe() {
   try {
@@ -1092,6 +1093,7 @@ function initializeCastApi() {
     castSession = sm.getCurrentSession();
     castPlaybackStarted = false;
     castConnecting = false;
+    if (castConnectTimer) { clearTimeout(castConnectTimer); castConnectTimer = null; }
     updateCastButton();
     updateCastStatus();
     if (currentTvChannel) {
@@ -1102,6 +1104,7 @@ function initializeCastApi() {
     castSession = null;
     castPlaybackStarted = false;
     castConnecting = false;
+    if (castConnectTimer) { clearTimeout(castConnectTimer); castConnectTimer = null; }
     updateCastButton();
     updateCastStatus();
     resumeLocalPlayback();
@@ -1110,6 +1113,7 @@ function initializeCastApi() {
     var err = ev && ev.error;
     console.error('[Cast] SESSION_START_FAILED', err, castErrInfo(err));
     castConnecting = false;
+    if (castConnectTimer) { clearTimeout(castConnectTimer); castConnectTimer = null; }
     updateCastButton();
     updateCastStatus();
     var st = document.getElementById('videoStatus');
@@ -1199,23 +1203,44 @@ function toggleCast() {
     return;
   }
   if (castSession) {
+    if (castConnectTimer) { clearTimeout(castConnectTimer); castConnectTimer = null; }
+    castConnecting = false;
     castContext.endCurrentSession(true);
+    updateCastButton();
+    var stEnd = document.getElementById('videoStatus');
+    if (stEnd) stEnd.textContent = 'Proyección detenida';
+    return;
   } else if (!castAvailable) {
     var stx = document.getElementById('videoStatus');
     if (stx) stx.textContent = 'Tu navegador no soporta Chromecast';
+    return;
   } else if (castConnecting) {
+    var stConn = document.getElementById('videoStatus');
+    if (stConn) stConn.textContent = 'Conectando con el Google TV...';
     return;
   } else {
     castConnecting = true;
     var stc = document.getElementById('videoStatus');
     if (stc) stc.textContent = 'Conectando con el Google TV...';
     updateCastButton();
+    if (castConnectTimer) { clearTimeout(castConnectTimer); castConnectTimer = null; }
+    castConnectTimer = setTimeout(function() {
+      castConnecting = false;
+      castConnectTimer = null;
+      updateCastButton();
+      var stt = document.getElementById('videoStatus');
+      if (stt && stt.textContent.indexOf('Conectando') !== -1) {
+        stt.textContent = 'No se pudo conectar (tiempo agotado). Reinicia el Google TV y vuelve a intentar.';
+      }
+    }, 45000);
     castContext.requestSession().then(function() {
       castConnecting = false;
+      if (castConnectTimer) { clearTimeout(castConnectTimer); castConnectTimer = null; }
       updateCastButton();
       console.log('[Cast] requestSession ok');
     }).catch(function(err) {
       castConnecting = false;
+      if (castConnectTimer) { clearTimeout(castConnectTimer); castConnectTimer = null; }
       updateCastButton();
       console.error('[Cast] requestSession error', err, castErrInfo(err));
       var cur = null;
@@ -1225,6 +1250,8 @@ function toggleCast() {
         castPlaybackStarted = false;
         updateCastButton();
         updateCastStatus();
+        var stC = document.getElementById('videoStatus');
+        if (stC) stC.textContent = 'Reproduciendo en el Google TV...';
         if (currentTvChannel) startCastPlayback(currentTvChannel);
         return;
       }
@@ -1303,12 +1330,12 @@ function closeVideoModal() {
   if (video) { video.pause(); video.src = ''; video.removeAttribute('src'); try { video.load(); } catch(e) {} }
   if (currentHls) { currentHls.destroy(); currentHls = null; }
   currentTvChannel = null;
-  if (castSession && castContext) {
-    try { castContext.endCurrentSession(true); } catch(e) {}
-  }
   document.getElementById('videoModal').classList.remove('open');
   document.body.style.overflow = '';
+  var videoStatus = document.getElementById('videoStatus');
+  if (videoStatus) videoStatus.textContent = '';
   updateCastButton();
+  updateCastStatus();
 }
 
 // ========== NAVIGATION ==========
