@@ -1107,13 +1107,13 @@ function initializeCastApi() {
     resumeLocalPlayback();
   });
   sm.addEventListener(cast.framework.SessionManagerEventType.SESSION_START_FAILED, function(ev) {
-    var code = ev && ev.error ? ev.error.code : '';
-    console.error('[Cast] SESSION_START_FAILED', code, ev && ev.error);
+    var err = ev && ev.error;
+    console.error('[Cast] SESSION_START_FAILED', err, castErrInfo(err));
     castConnecting = false;
     updateCastButton();
     updateCastStatus();
     var st = document.getElementById('videoStatus');
-    if (st) st.textContent = 'Error al conectar: ' + castFriendlyError(code);
+    if (st) st.textContent = 'Error al conectar: ' + castErrInfo(err);
   });
   updateCastButton();
   updateCastStatus();
@@ -1141,6 +1141,20 @@ function castFriendlyError(code) {
   if (code === 'receiver_unavailable' || code === 3) return 'receptor no disponible';
   if (code === 'session_error' || code === 8) return 'error de sesion';
   return 'error ' + (code || 'desconocido');
+}
+
+function castErrInfo(err) {
+  try {
+    if (!err) return 'error desconocido';
+    var parts = [];
+    if (err.code) parts.push('code=' + err.code);
+    if (err.description) parts.push(err.description);
+    if (err.details) parts.push(String(err.details));
+    if (!parts.length) parts.push(String(err));
+    return parts.join(' | ');
+  } catch (e) {
+    return 'error desconocido';
+  }
 }
 
 function startCastPlayback(c) {
@@ -1191,12 +1205,22 @@ function toggleCast() {
     if (stc) stc.textContent = 'Buscando dispositivo...';
     castContext.requestSession().then(function() {
       castConnecting = false;
-      if (typeof console !== 'undefined') console.log('[Cast] requestSession ok');
+      console.log('[Cast] requestSession ok');
     }).catch(function(err) {
       castConnecting = false;
-      console.error('[Cast] requestSession error', err);
+      console.error('[Cast] requestSession error', err, castErrInfo(err));
+      var cur = null;
+      try { cur = castContext.getCurrentSession(); } catch (e) {}
+      if (cur) {
+        castSession = cur;
+        castPlaybackStarted = false;
+        updateCastButton();
+        updateCastStatus();
+        if (currentTvChannel) startCastPlayback(currentTvChannel);
+        return;
+      }
       var ste = document.getElementById('videoStatus');
-      if (ste) ste.textContent = 'No se pudo conectar: ' + castFriendlyError(err && err.code);
+      if (ste) ste.textContent = 'No se pudo conectar: ' + castErrInfo(err);
     });
   }
 }
