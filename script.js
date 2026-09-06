@@ -1107,7 +1107,7 @@ function initializeCastApi() {
   castContext = cast.framework.CastContext.getInstance();
   castContext.setOptions({
     receiverApplicationId: CAST_APP_ID,
-    autoJoinPolicy: chrome.cast.AutoJoinPolicy.ORIGIN_SCOPED
+    autoJoinPolicy: chrome.cast.AutoJoinPolicy.NO
   });
   var sm = castContext.getSessionManager();
   sm.addEventListener(cast.framework.SessionManagerEventType.SESSION_STARTED, function() {
