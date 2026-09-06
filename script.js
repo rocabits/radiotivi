@@ -1264,12 +1264,12 @@ function toggleCast() {
     showToast('Tu navegador no soporta Chromecast');
     return;
   }
-  if (castConnecting) {
-    showToast('Conectando con el Google TV...');
-    return;
-  }
   if (castSession) {
     stopCasting('Proyección detenida');
+    return;
+  }
+  if (castConnecting) {
+    showToast('Conectando con el Google TV...');
     return;
   }
   connectToTv();
@@ -1285,11 +1285,12 @@ function connectToTv() {
     updateCastButton();
     showToast('No se pudo conectar (tiempo agotado). Reinicia el Google TV y vuelve a intentar.');
   }, 45000);
-  castContext.requestSession().then(function() {
+  castContext.requestSession().then(function(sess) {
     castConnecting = false;
     if (castConnectTimer) { clearTimeout(castConnectTimer); castConnectTimer = null; }
+    if (sess && !castSession) castSession = sess;
     updateCastButton();
-    console.log('[Cast] requestSession ok');
+    console.log('[Cast] requestSession ok', sess ? 'session via promise' : 'sin session en promise');
   }).catch(function(err) {
     castConnecting = false;
     if (castConnectTimer) { clearTimeout(castConnectTimer); castConnectTimer = null; }
@@ -1318,6 +1319,8 @@ function stopCasting(msg) {
   castSession = null;
   var st = document.getElementById('videoStatus');
   if (st) st.textContent = msg || 'Proyección detenida';
+  if (msg) showToast(msg);
+  else showToast('Proyección detenida');
   updateCastButton();
   castDiag('sesion terminada (parada manual)');
 }
@@ -1326,8 +1329,16 @@ function updateCastButton() {
   var btn = document.getElementById('castBtn');
   if (!btn) return;
   btn.hidden = false;
-  btn.classList.toggle('active', !!castSession);
-  btn.classList.toggle('connecting', !!castConnecting || !!castLoadTimer);
+  btn.classList.remove('active', 'connecting');
+  if (castSession) {
+    btn.classList.add('active');
+    castDiag('estado: conectado (verde)');
+  } else if (castConnecting) {
+    btn.classList.add('connecting');
+    castDiag('estado: conectando (naranja)');
+  } else {
+    castDiag('estado: desconectado (gris)');
+  }
 }
 
 function stopLocalPlayback() {
