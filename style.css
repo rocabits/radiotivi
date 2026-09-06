@@ -248,6 +248,37 @@ header {
   white-space: nowrap;
 }
 
+/* Install PWA button */
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.header-install-btn {
+  display: none;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  border: none;
+  background: rgba(255, 255, 255, 0.15);
+  color: white;
+  cursor: pointer;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s;
+}
+
+.header-install-btn:not(.hidden) {
+  display: flex;
+}
+
+.header-install-btn:hover,
+.header-install-btn:focus-visible {
+  background: rgba(255, 255, 255, 0.25);
+}
+
 /* ========== SEARCH BAR ========== */
 .search-bar {
   display: flex;

@@ -16,19 +16,23 @@ def chunk(typ, data):
     c += struct.pack('>I', zlib.crc32(typ + data) & 0xffffffff)
     return c
 
-def make_icon(size):
+def make_icon(size, content_scale=1.0):
     s = size / 100.0
     green = (46, 204, 113)
     white = (255, 255, 255)
-    cx, cy, r = 50 * s, 50 * s, 38 * s
+    cx, cy = 50 * s, 50 * s
+    r = 38 * s * content_scale
+
+    def scaled(p):
+        return 50 * s + (p - 50 * s) * content_scale
 
     def in_circle(x, y):
         return (x - cx) ** 2 + (y - cy) ** 2 <= r * r
 
     def tri_contains(x, y):
-        x0, y0 = 41 * s, 34 * s
-        x1, y1 = 41 * s, 66 * s
-        x2, y2 = 66 * s, 50 * s
+        x0, y0 = scaled(41 * s), scaled(34 * s)
+        x1, y1 = scaled(41 * s), scaled(66 * s)
+        x2, y2 = scaled(66 * s), scaled(50 * s)
         d1 = (x1 - x2) * (y - y2) - (y1 - y2) * (x - x2)
         d2 = (x0 - x2) * (y - y2) - (y0 - y2) * (x - x2)
         d3 = (x2 - x0) * (y - y0) - (y2 - y0) * (x - x0)
@@ -53,3 +57,5 @@ def make_icon(size):
 for size in (192, 512):
     write_png(f'icon-{size}.png', size, make_icon(size))
     print(f'icon-{size}.png generado')
+    write_png(f'icon-{size}-maskable.png', size, make_icon(size, content_scale=0.6))
+    print(f'icon-{size}-maskable.png generado')

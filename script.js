@@ -1672,8 +1672,48 @@ if ('serviceWorker' in navigator) {
   });
 }
 
+// ========== PWA INSTALL ==========
+var deferredInstallPrompt = null;
+var installButton = null;
+
+function setupInstallButton() {
+  installButton = document.getElementById('installBtn');
+  if (!installButton) return;
+
+  window.addEventListener('beforeinstallprompt', function(e) {
+    e.preventDefault();
+    deferredInstallPrompt = e;
+    installButton.classList.remove('hidden');
+  });
+
+  installButton.addEventListener('click', function() {
+    if (!deferredInstallPrompt) return;
+    deferredInstallPrompt.prompt();
+    deferredInstallPrompt.userChoice.then(function(choice) {
+      if (choice.outcome === 'accepted') {
+        hideInstallButton();
+      }
+      deferredInstallPrompt = null;
+    });
+  });
+
+  window.addEventListener('appinstalled', function() {
+    hideInstallButton();
+    deferredInstallPrompt = null;
+  });
+
+  if (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) {
+    hideInstallButton();
+  }
+}
+
+function hideInstallButton() {
+  if (installButton) installButton.classList.add('hidden');
+}
+
 // ========== INIT ==========
 function init() {
+  setupInstallButton();
   initSupabase();
   castReadySafe();
 
