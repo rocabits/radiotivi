@@ -1672,68 +1672,8 @@ if ('serviceWorker' in navigator) {
   });
 }
 
-// ========== PWA INSTALL ==========
-var deferredInstallPrompt = null;
-var installDismissed = false;
-
-function setupInstallPrompt() {
-  var modal = document.getElementById('installModal');
-  if (!modal) return;
-
-  window.addEventListener('beforeinstallprompt', function(e) {
-    e.preventDefault();
-    deferredInstallPrompt = e;
-    if (!installDismissed && !isStandalone()) {
-      openInstallModal();
-    }
-  });
-
-  document.getElementById('btnInstallOk').addEventListener('click', function() {
-    if (!deferredInstallPrompt) return;
-    closeInstallModal();
-    deferredInstallPrompt.prompt();
-    deferredInstallPrompt.userChoice.then(function(choice) {
-      if (choice.outcome === 'accepted') {
-        installDismissed = true;
-      }
-      deferredInstallPrompt = null;
-    });
-  });
-
-  document.getElementById('btnInstallLater').addEventListener('click', function() {
-    installDismissed = true;
-    closeInstallModal();
-  });
-
-  document.getElementById('installModalOverlay').addEventListener('click', function() {
-    installDismissed = true;
-    closeInstallModal();
-  });
-
-  window.addEventListener('appinstalled', function() {
-    installDismissed = true;
-    closeInstallModal();
-    deferredInstallPrompt = null;
-  });
-}
-
-function openInstallModal() {
-  var modal = document.getElementById('installModal');
-  if (modal) modal.classList.add('open');
-}
-
-function closeInstallModal() {
-  var modal = document.getElementById('installModal');
-  if (modal) modal.classList.remove('open');
-}
-
-function isStandalone() {
-  return window.matchMedia && window.matchMedia('(display-mode: standalone)').matches;
-}
-
 // ========== INIT ==========
 function init() {
-  setupInstallPrompt();
   initSupabase();
   castReadySafe();
 
